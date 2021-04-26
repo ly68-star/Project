@@ -1,0 +1,128 @@
+pip install pandas_datareader
+
+#Package/ibraries: pandas_datareader, NumPy, pandas, Matplotlib, seaborn, scipy.stats, statsmodels.formula.api, statsmodels.api
+# Our project evaluate the airline stocks performence during the COVID-19 (2020-04-01 to 2020-06-30)
+#Delta Air Lines, Inc. (DAL), United Airlines Holdings, Inc. (UAL), American Airlines Group Inc. (AAL),JetBlue Airways Corporation (JBLU)
+#Alaska Air Group, Inc. (ALK) is our five airline stock symbol. 
+#INPUT of the first stock symbol is DAL, ALK, AAL, JBLU, UAL, INPUT of the second stock symbol is DAL, ALK, AAL, JBLU, UAL, NO
+
+from pandas_datareader import data
+from scipy import stats
+import matplotlib.pyplot as plt
+import seaborn; seaborn.set()
+import pandas as pd
+import numpy as np
+import scipy.stats
+import pandas as pd
+
+from statsmodels.formula.api import ols
+import statsmodels.api as sm
+
+
+n=str(input("choose your first stock sympol  "   )).upper()
+m=str(input("choose your second stock symbol. Enter NO if you don want to have a second stock sympol  "   )).upper()
+confidence=float(input("choose your confidence level  "))
+
+def start():
+    if m=='NO' and n=='AAL' or n=='DAL' or n=='ALK' or n=='UAL' or n=='JBLU':
+        info(n)
+    if m!='NO' and n=='AAL' or n=='DAL' or n=='ALK' or n=='UAL' or n=='JBLU':
+        two_stock_info(n,m)
+    else:     
+        
+        print('incorrect stock symbol, please check and run again')
+      
+
+        
+def info(stock_symbol:str):
+    
+
+    #Open stock's data by panda, data clean
+    df=data.DataReader(stock_symbol, start='2020-04-01', end='2020-06-30', data_source='yahoo')
+    df.reset_index(level=0, inplace=True)
+    df
+    
+
+
+    #Find the logreturn of the choosen stock
+    df['LogReturn']=np.log(df['Close'])/np.log(df['Open'])
+    print(df)
+    df.columns
+    
+    logreturn=np.array(df['LogReturn'])
+    Date=np.array(df['Date'])
+    plt.figure()
+    plt.hist(logreturn)
+    
+    df.groupby([ df['Date'].dt.year,df["Date"].dt.month]).count().plot(kind="bar")
+    
+    #plot probability logreturn of stock
+    plt.figure()
+   
+    res = stats.probplot(df['LogReturn'], plot=plt)
+    
+    #reate (approximate) confidence intervals for the meansand  variances  given  a  confidence  level
+    a = 1.0 * np.array(logreturn)
+    n = len(a)
+    m = np.mean(a)
+    se=scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    confidence_interval=(m-h,m+h)
+    print(' ')
+    print('Confidence_interval is:',confidence_interval)
+    
+    #regression logreturn and date
+    import datetime as dt
+    df['Date'] = pd.to_datetime(df['Date'])
+    df['Date']=df['Date'].map(dt.datetime.toordinal)
+    ad_model = ols('logreturn ~ Date', data=df).fit()
+    print(ad_model.summary())
+    
+    #PLOT REGRESSION
+    fig, ax = plt.subplots()
+    fig = sm.graphics.plot_fit(ad_model, 1, ax=ax,
+    vlines=False)
+    ax.set_ylabel("Logreturn")
+    ax.set_xlabel("Date")
+    ax.set_title("Regression")
+    plt.show()
+    
+
+def two_stock_info(stock_symbol1, stock_symbol2):
+    
+    #Open two stocks' data by panda, data clean
+
+    df1=data.DataReader(stock_symbol1, start='2020-04-01', end='2020-06-30', data_source='yahoo')
+    df2=data.DataReader(stock_symbol2, start='2020-04-01', end='2020-06-30', data_source='yahoo')
+    df1.reset_index(level=0, inplace=True)
+    df2.reset_index(level=0, inplace=True)
+    
+    #Find log return for each stock
+    df1['LogReturn']=np.log(df1['Close'])/np.log(df1['Open'])
+    df2['LogReturn']=np.log(df2['Close'])/np.log(df2['Open'])
+    logreturn1=np.array(df1['LogReturn'])
+    logreturn2=np.array(df2['LogReturn'])
+    Date1=np.array(df1['Date'])
+    Date2=np.array(df2['Date'])
+    
+    # Test the equality of the twopopulation means.
+    mean_test=stats.ttest_ind(logreturn1,logreturn2)
+    
+    #regression logreturn of the first stock and logreturn of the second stock
+    #Perform a regression of one log-return on the other.)
+    df_log=pd.DataFrame({'A':logreturn1, 'B':logreturn2})
+    ad_model = ols('A~B', data=df_log).fit()
+    print(ad_model.summary())
+    
+    # plot the 
+    fig, ax = plt.subplots()
+    fig = sm.graphics.plot_fit(ad_model, 1, ax=ax,
+    vlines=False)
+    ax.set_ylabel("Logreturn1")
+    ax.set_xlabel("Logreturn2")
+    ax.set_title("Linear Regression")
+    plt.show()
+    
+start()
+    
+   
